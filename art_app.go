@@ -737,14 +737,6 @@ func PostItem(stub *shim.ChaincodeStub, function string, args []string) ([]byte,
 		return nil, err
 	}
 
-	// Check if the Owner ID specified is registered and valid
-	ownerInfo, err := ValidateMember(stub, itemObject.CurrentOwnerID)
-	fmt.Println("Owner information  ", ownerInfo, itemObject.CurrentOwnerID)
-	if err != nil {
-		fmt.Println("PostItem() : Failed Owner information not found for ", itemObject.CurrentOwnerID)
-		return nil, err
-	}
-
 	// Convert Item Object to JSON
 	buff, err := ARtoJSON(itemObject) //
 	if err != nil {
@@ -759,23 +751,6 @@ func PostItem(stub *shim.ChaincodeStub, function string, args []string) ([]byte,
 			fmt.Println("PostItem() : write error while inserting record\n")
 			return buff, err
 		}
-
-		// Put an entry into the Item History Table
-		_, err = PostItemLog(stub, itemObject, "INITIAL", "DEFAULT")
-		if err != nil {
-			fmt.Println("PostItemLog() : write error while inserting record\n")
-			return nil, err
-		}
-
-		// Post Entry into ItemCatTable - i.e. Item Category Table
-		// The first key 2016 is a dummy (band aid) key to extract all values
-		keys = []string{"2016", args[6], args[0]}
-		err = UpdateLedger(stub, "ItemCatTable", keys, buff)
-		if err != nil {
-			fmt.Println("PostItem() : Write error while inserting record into ItemCatTable \n")
-			return buff, err
-		}
-
 	}
 
 	secret_key, _ := json.Marshal(itemObject.AES_Key)
@@ -2033,10 +2008,22 @@ func UpdateLedger(stub *shim.ChaincodeStub, tableName string, keys []string, arg
 	row := shim.Row{columns}
 	ok, err := stub.InsertRow(tableName, row)
 	if err != nil {
-		return fmt.Errorf("UpdateLedger: InsertRow into "+tableName+" Table operation failed. %s", err)
+		fmt.Printf("\nUpdateLedger: Cannot InsertRow into "+tableName+" Table operation failed. %s\n", err)
+		fmt.Printf("\nUpdateLedger: Try ReplaceRow")
+		ok, err = stub.ReplaceRow(tableName, row)
+		if err != nil {
+			fmt.Printf("\nUpdateLedger: ReplaceRow into "+tableName+" Table operation failed. %s\n", err)
+			return fmt.Errorf("UpdateLedger: ReplaceRow into "+tableName+" Table operation failed. %s", err)
+		}
 	}
 	if !ok {
-		return errors.New("UpdateLedger: InsertRow into " + tableName + " Table failed. Row with given key " + keys[0] + " already exists")
+		fmt.Printf("\nUpdateLedger: Cannot InsertRow into "+tableName+" Table operation failed. %s\n", err)
+		fmt.Printf("\nUpdateLedger: Try ReplaceRow")
+		_, err = stub.ReplaceRow(tableName, row)
+		if err != nil {
+			fmt.Printf("UpdateLedger: InsertRow into " + tableName + " Table failed. Row with given key " + keys[0] + " already exists")
+			return fmt.Errorf("UpdateLedger: InsertRow into " + tableName + " Table failed. Row with given key " + keys[0] + " already exists")
+		}
 	}
 
 	fmt.Println("UpdateLedger: InsertRow into ", tableName, " Table operation Successful. ")
