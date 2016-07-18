@@ -499,7 +499,7 @@ func GetItem(stub *shim.ChaincodeStub, function string, args []string) ([]byte, 
 
 	// Masking ItemImage binary data
 	itemObj, _ := JSONtoAR(Avalbytes)
-	itemObj.ItemImage = []byte{}
+	//itemObj.ItemImage = []byte{}
 	Avalbytes, _ = ARtoJSON(itemObj)
 
 	return Avalbytes, nil
