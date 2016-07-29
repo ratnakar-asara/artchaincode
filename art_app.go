@@ -311,7 +311,7 @@ func main() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // SimpleChaincode - Init Chaincode implementation - The following sequence of transactions can be used to test the Chaincode
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+var GlobalCounter int64
 func (t *SimpleChaincode) Init(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	// TODO - Include all initialization to be complete before Invoke and Query
@@ -336,7 +336,7 @@ func (t *SimpleChaincode) Init(stub *shim.ChaincodeStub, function string, args [
 	if err != nil {
 		return nil, err
 	}
-
+	GlobalCounter = 0;
 	fmt.Println("Init() Initialization Complete  : ", args)
 	return []byte("Init(): Initialization Complete"), nil
 }
@@ -665,7 +665,8 @@ func GetTransaction(stub *shim.ChaincodeStub, function string, args []string) ([
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func PostUser(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
-
+	GlobalCounter = GlobalCounter + 1
+	args[0] = strconv.FormatInt(GlobalCounter, 10)
 	record, err := CreateUserObject(args[0:]) //
 	if err != nil {
 		return nil, err
@@ -686,12 +687,12 @@ func PostUser(stub *shim.ChaincodeStub, function string, args []string) ([]byte,
 		}
 
 		// Post Entry into UserCatTable - i.e. User Category Table
-		keys = []string{"2016", args[3], args[0]}
+		/*keys = []string{"2016", args[3], args[0]}
 		err = UpdateLedger(stub, "UserCatTable", keys, buff)
 		if err != nil {
 			fmt.Println("PostUser() : write error while inserting recordinto UserCatTable \n")
 			return nil, err
-		}
+		}*/
 	}
 
 	return buff, err
@@ -710,7 +711,7 @@ func CreateUserObject(args []string) (UserObject, error) {
 
 	// Validate UserID is an integer
 
-	_, err = strconv.Atoi(args[0])
+	//_, err = strconv.Atoi(GlobalCounter)
 	if err != nil {
 		return aUser, errors.New("CreateUserObject() : User ID should be an integer")
 	}
@@ -2324,7 +2325,7 @@ func GetUserListByCat(stub *shim.ChaincodeStub, function string, args []string) 
 	if len(args) < 1 {
 		fmt.Println("GetUserListByCat(): Incorrect number of arguments. Expecting 1 ")
 		fmt.Println("GetUserListByCat(): ./peer chaincode query -l golang -n mycc -c '{\"Function\": \"GetUserListByCat\", \"Args\": [\"AH\"]}'")
-		return nil, errors.New("CreateUserObject(): Incorrect number of arguments. Expecting 1 ")
+		return nil, errors.New("GetUserListByCat(): Incorrect number of arguments. Expecting 1 ")
 	}
 
 	rows, err := GetList(stub, "UserCatTable", args)
