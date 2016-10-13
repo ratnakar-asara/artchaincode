@@ -229,8 +229,8 @@ func GetNumberOfKeys(tname string) int {
 // during an invoke
 //
 //////////////////////////////////////////////////////////////
-func InvokeFunction(fname string) func(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	InvokeFunc := map[string]func(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error){
+func InvokeFunction(fname string) func(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+	InvokeFunc := map[string]func(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error){
 		"PostItem":           PostItem,
 		"PostUser":           PostUser,
 		"PostAuctionRequest": PostAuctionRequest,
@@ -249,8 +249,8 @@ func InvokeFunction(fname string) func(stub shim.ChaincodeStubInterface, functio
 // Query Functions based on Function name
 //
 //////////////////////////////////////////////////////////////
-func QueryFunction(fname string) func(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	QueryFunc := map[string]func(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error){
+func QueryFunction(fname string) func(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+	QueryFunc := map[string]func(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error){
 		"GetItem":               GetItem,
 		"GetUser":               GetUser,
 		"GetAuctionRequest":     GetAuctionRequest,
@@ -297,7 +297,7 @@ func main() {
 	} else {
 		fmt.Println("----------------- STARTED IN NET MODE -------------------- ")
 		//set chaincode path for NET MODE
-		ccPath = fmt.Sprintf("%s/src/github.com/ITPeople-Blockchain/auction/art/artchaincode/", gopath)
+		ccPath = fmt.Sprintf("%s/src/github.com/ratnakar-asara/artchaincode/", gopath)
 	}
 
 	// Start the shim -- running the fabric
@@ -311,8 +311,8 @@ func main() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // SimpleChaincode - Init Chaincode implementation - The following sequence of transactions can be used to test the Chaincode
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+var GlobalCounter int64
+func (t *SimpleChaincode) Init(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	// TODO - Include all initialization to be complete before Invoke and Query
 	// Uses aucTables to delete tables if they exist and re-create them
@@ -336,7 +336,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	if err != nil {
 		return nil, err
 	}
-
+	GlobalCounter = 0;
 	fmt.Println("Init() Initialization Complete  : ", args)
 	return []byte("Init(): Initialization Complete"), nil
 }
@@ -354,7 +354,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 // - The CloseAuction creates a transaction and invokes PostTransaction
 ////////////////////////////////////////////////////////////////
 
-func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (t *SimpleChaincode) Invoke(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 	var err error
 	var buff []byte
 
@@ -389,7 +389,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 // ./peer chaincode query -l golang -n mycc -c '{"Function": "GetItem", "Args": ["2000"]}'
 //////////////////////////////////////////////////////////////////////////////////////////
 
-func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (t *SimpleChaincode) Query(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 	var err error
 	var buff []byte
 	fmt.Println("ID Extracted and Type = ", args[0])
@@ -422,7 +422,7 @@ func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function strin
 // ./peer chaincode query -l golang -n mycc -c '{"Function": "GetVersion", "Args": ["version"]}'
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-func GetVersion(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func GetVersion(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 	if len(args) < 1 {
 		fmt.Println("GetVersion() : Requires 1 argument 'version'")
 		return nil, errors.New("GetVersion() : Requires 1 argument 'version'")
@@ -450,7 +450,7 @@ func GetVersion(stub shim.ChaincodeStubInterface, function string, args []string
 // ./peer chaincode query -l golang -n mycc -c '{"Function": "GetUser", "Args": ["100"]}'
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-func GetUser(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func GetUser(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	var err error
 
@@ -477,7 +477,7 @@ func GetUser(stub shim.ChaincodeStubInterface, function string, args []string) (
 // Retrieve a Item by Item ID
 // ./peer chaincode query -l golang -n mycc -c '{"Function": "GetItem", "Args": ["1000"]}'
 /////////////////////////////////////////////////////////////////////////////////////////
-func GetItem(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func GetItem(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	var err error
 
@@ -499,7 +499,7 @@ func GetItem(stub shim.ChaincodeStubInterface, function string, args []string) (
 
 	// Masking ItemImage binary data
 	itemObj, _ := JSONtoAR(Avalbytes)
-	itemObj.ItemImage = []byte{}
+	//itemObj.ItemImage = []byte{}
 	Avalbytes, _ = ARtoJSON(itemObj)
 
 	return Avalbytes, nil
@@ -511,7 +511,7 @@ func GetItem(stub shim.ChaincodeStubInterface, function string, args []string) (
 // ./peer chaincode query -l golang -n mycc -c '{"Function": "ValidateItemOwnership", "Args": ["1000", "100", "tGEBaZuKUBmwTjzNEyd+nr/fPUASuVJAZ1u7gha5fJg="]}'
 //
 /////////////////////////////////////////////////////////////////////////////////////////
-func ValidateItemOwnership(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func ValidateItemOwnership(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	var err error
 
@@ -567,7 +567,7 @@ func ValidateItemOwnership(stub shim.ChaincodeStubInterface, function string, ar
 // There are two other tables just for query purposes - AucInitTable, AucOpenTable
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////
-func GetAuctionRequest(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func GetAuctionRequest(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	var err error
 
@@ -595,7 +595,7 @@ func GetAuctionRequest(stub shim.ChaincodeStubInterface, function string, args [
 // ./peer chaincode query -l golang -n mycc -c '{"Function": "GetLastBid", "Args": ["1111"], "1"}'
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-func GetBid(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func GetBid(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	var err error
 
@@ -631,7 +631,7 @@ func GetBid(stub shim.ChaincodeStubInterface, function string, args []string) ([
 //  ./peer chaincode query -l golang -n mycc -c '{"Function": "GetTransaction", "Args": ["1111"]}'
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-func GetTransaction(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func GetTransaction(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	//var err error
 
@@ -664,8 +664,9 @@ func GetTransaction(stub shim.ChaincodeStubInterface, function string, args []st
 // ./peer chaincode invoke -l golang -n mycc -c '{"Function": "PostUser", "Args":["100", "USER", "Ashley Hart", "TRD",  "Morrisville Parkway, #216, Morrisville, NC 27560", "9198063535", "ashley@itpeople.com", "SUNTRUST", "00017102345", "0234678"]}'
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func PostUser(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-
+func PostUser(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+	GlobalCounter = GlobalCounter + 1
+	args[0] = strconv.FormatInt(GlobalCounter, 10)
 	record, err := CreateUserObject(args[0:]) //
 	if err != nil {
 		return nil, err
@@ -686,12 +687,12 @@ func PostUser(stub shim.ChaincodeStubInterface, function string, args []string) 
 		}
 
 		// Post Entry into UserCatTable - i.e. User Category Table
-		keys = []string{"2016", args[3], args[0]}
+		/*keys = []string{"2016", args[3], args[0]}
 		err = UpdateLedger(stub, "UserCatTable", keys, buff)
 		if err != nil {
 			fmt.Println("PostUser() : write error while inserting recordinto UserCatTable \n")
 			return nil, err
-		}
+		}*/
 	}
 
 	return buff, err
@@ -710,7 +711,7 @@ func CreateUserObject(args []string) (UserObject, error) {
 
 	// Validate UserID is an integer
 
-	_, err = strconv.Atoi(args[0])
+	//_, err = strconv.Atoi(GlobalCounter)
 	if err != nil {
 		return aUser, errors.New("CreateUserObject() : User ID should be an integer")
 	}
@@ -729,19 +730,11 @@ func CreateUserObject(args []string) (UserObject, error) {
 //./peer chaincode invoke -l golang -n mycc -c '{"Function": "PostItem", "Args":["1000", "ARTINV", "Shadows by Asppen", "Asppen Messer", "20140202", "Original", "Landscape" , "Canvas", "15 x 15 in", "sample_7.png","$600", "100"]}'
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func PostItem(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func PostItem(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	itemObject, err := CreateItemObject(args[0:])
 	if err != nil {
 		fmt.Println("PostItem(): Cannot create item object \n")
-		return nil, err
-	}
-
-	// Check if the Owner ID specified is registered and valid
-	ownerInfo, err := ValidateMember(stub, itemObject.CurrentOwnerID)
-	fmt.Println("Owner information  ", ownerInfo, itemObject.CurrentOwnerID)
-	if err != nil {
-		fmt.Println("PostItem() : Failed Owner information not found for ", itemObject.CurrentOwnerID)
 		return nil, err
 	}
 
@@ -759,23 +752,6 @@ func PostItem(stub shim.ChaincodeStubInterface, function string, args []string) 
 			fmt.Println("PostItem() : write error while inserting record\n")
 			return buff, err
 		}
-
-		// Put an entry into the Item History Table
-		_, err = PostItemLog(stub, itemObject, "INITIAL", "DEFAULT")
-		if err != nil {
-			fmt.Println("PostItemLog() : write error while inserting record\n")
-			return nil, err
-		}
-
-		// Post Entry into ItemCatTable - i.e. Item Category Table
-		// The first key 2016 is a dummy (band aid) key to extract all values
-		keys = []string{"2016", args[6], args[0]}
-		err = UpdateLedger(stub, "ItemCatTable", keys, buff)
-		if err != nil {
-			fmt.Println("PostItem() : Write error while inserting record into ItemCatTable \n")
-			return buff, err
-		}
-
 	}
 
 	secret_key, _ := json.Marshal(itemObject.AES_Key)
@@ -841,7 +817,7 @@ func CreateItemObject(args []string) (ItemObject, error) {
 // This function is internally invoked by PostTransaction and is not a Public API
 ///////////////////////////////////////////////////////////////////////////////////
 
-func UpdateItemObject(stub shim.ChaincodeStubInterface, ar []byte, hammerPrice string, buyer string) ([]byte, error) {
+func UpdateItemObject(stub *shim.ChaincodeStub, ar []byte, hammerPrice string, buyer string) ([]byte, error) {
 
 	var err error
 	myItem, err := JSONtoAR(ar)
@@ -889,7 +865,7 @@ func UpdateItemObject(stub shim.ChaincodeStubInterface, ar []byte, hammerPrice s
 // Transfer Item to new owner - no change in price  - In the example XFER is the recType
 // ./peer chaincode invoke -l golang -n mycc -c '{"Function": "TransferItem", "Args": ["1000", "100", "tGEBaZuKUBmwTjzNEyd+nr/fPUASuVJAZ1u7gha5fJg=", "300", "XFER"]}'
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-func TransferItem(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func TransferItem(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	var err error
 
@@ -970,7 +946,7 @@ func TransferItem(stub shim.ChaincodeStubInterface, function string, args []stri
 // The function return the Auction ID and the Status = OPEN or INIT
 ////////////////////////////////////////////////////////////////////////////////////
 
-func VerifyIfItemIsOnAuction(stub shim.ChaincodeStubInterface, itemID string) error {
+func VerifyIfItemIsOnAuction(stub *shim.ChaincodeStub, itemID string) error {
 
 	rows, err := GetListOfOpenAucs(stub, "AucOpenTable", []string{"2016"})
 	if err != nil {
@@ -1031,7 +1007,7 @@ func VerifyIfItemIsOnAuction(stub shim.ChaincodeStubInterface, itemID string) er
 // See Sample data
 // ./peer chaincode query -l golang -n mycc -c '{"Function": "IsItemOnAuction", "Args": ["1000", "VERIFY"]}'
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-func IsItemOnAuction(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func IsItemOnAuction(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 	if len(args) < 2 {
 		fmt.Println("IsItemOnAuction() : Requires 2 arguments Item#, RecordType")
 		return nil, errors.New("IsItemOnAuction() : Requires 2 arguments Item#, RecordType")
@@ -1055,7 +1031,7 @@ func IsItemOnAuction(stub shim.ChaincodeStubInterface, function string, args []s
 // PostItemLog IS NOT A PUBLIC API and is invoked every time some event happens in the Item's life
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func PostItemLog(stub shim.ChaincodeStubInterface, item ItemObject, status string, ah string) ([]byte, error) {
+func PostItemLog(stub *shim.ChaincodeStub, item ItemObject, status string, ah string) ([]byte, error) {
 
 	iLog := ItemToItemLog(item)
 	iLog.Status = status
@@ -1087,7 +1063,7 @@ func PostItemLog(stub shim.ChaincodeStubInterface, item ItemObject, status strin
 // The start and end time of the auction are actually assigned when the auction is opened  by OpenAuctionForBids()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func PostAuctionRequest(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func PostAuctionRequest(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	ar, err := CreateAuctionRequest(args[0:])
 	if err != nil {
@@ -1187,7 +1163,7 @@ func CreateAuctionRequest(args []string) (AuctionRequest, error) {
 // This is invoked by the CloseAuctionRequest
 //
 ////////////////////////////////////////////////////////////
-func PostTransaction(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func PostTransaction(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	if function != "PostTransaction" {
 		return nil, errors.New("PostTransaction(): Invalid function name. Expecting \"PostTransaction\"")
@@ -1294,7 +1270,7 @@ func CreateTransactionRequest(args []string) (ItemTransaction, error) {
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func PostBid(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func PostBid(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	bid, err := CreateBidObject(args[0:]) //
 	if err != nil {
@@ -1912,7 +1888,7 @@ func BidtoTransaction(bid Bid) ItemTransaction {
 // Validate if the User Information Exists
 // in the block-chain
 ////////////////////////////////////////////////////////////////////////////
-func ValidateMember(stub shim.ChaincodeStubInterface, owner string) ([]byte, error) {
+func ValidateMember(stub *shim.ChaincodeStub, owner string) ([]byte, error) {
 
 	// Get the Item Objects and Display it
 	// Avalbytes, err := stub.GetState(owner)
@@ -1939,7 +1915,7 @@ func ValidateMember(stub shim.ChaincodeStubInterface, owner string) ([]byte, err
 // Validate if the User Information Exists
 // in the block-chain
 ////////////////////////////////////////////////////////////////////////////
-func ValidateItemSubmission(stub shim.ChaincodeStubInterface, artId string) ([]byte, error) {
+func ValidateItemSubmission(stub *shim.ChaincodeStub, artId string) ([]byte, error) {
 
 	// Get the Item Objects and Display it
 	args := []string{artId, "ARTINV"}
@@ -1974,7 +1950,7 @@ func ValidateItemSubmission(stub shim.ChaincodeStubInterface, artId string) ([]b
 //  - InitAuctionTriggerReg()
 //  - etc. etc.
 ////////////////////////////////////////////////////////////////////////////
-func InitLedger(stub shim.ChaincodeStubInterface, tableName string) error {
+func InitLedger(stub *shim.ChaincodeStub, tableName string) error {
 
 	// Generic Table Creation Function - requires Table Name and Table Key Entry
 	// Create Table - Get number of Keys the tables supports
@@ -2013,7 +1989,7 @@ func InitLedger(stub shim.ChaincodeStubInterface, tableName string) error {
 // Open a User Registration Table if one does not exist
 // Register users into this table
 ////////////////////////////////////////////////////////////////////////////
-func UpdateLedger(stub shim.ChaincodeStubInterface, tableName string, keys []string, args []byte) error {
+func UpdateLedger(stub *shim.ChaincodeStub, tableName string, keys []string, args []byte) error {
 
 	nKeys := GetNumberOfKeys(tableName)
 	if nKeys < 1 {
@@ -2033,10 +2009,22 @@ func UpdateLedger(stub shim.ChaincodeStubInterface, tableName string, keys []str
 	row := shim.Row{columns}
 	ok, err := stub.InsertRow(tableName, row)
 	if err != nil {
-		return fmt.Errorf("UpdateLedger: InsertRow into "+tableName+" Table operation failed. %s", err)
+		fmt.Printf("\nUpdateLedger: Cannot InsertRow into "+tableName+" Table operation failed. %s\n", err)
+		fmt.Printf("\nUpdateLedger: Try ReplaceRow")
+		ok, err = stub.ReplaceRow(tableName, row)
+		if err != nil {
+			fmt.Printf("\nUpdateLedger: ReplaceRow into "+tableName+" Table operation failed. %s\n", err)
+			return fmt.Errorf("UpdateLedger: ReplaceRow into "+tableName+" Table operation failed. %s", err)
+		}
 	}
 	if !ok {
-		return errors.New("UpdateLedger: InsertRow into " + tableName + " Table failed. Row with given key " + keys[0] + " already exists")
+		fmt.Printf("\nUpdateLedger: Cannot InsertRow into "+tableName+" Table operation failed. %s\n", err)
+		fmt.Printf("\nUpdateLedger: Try ReplaceRow")
+		_, err = stub.ReplaceRow(tableName, row)
+		if err != nil {
+			fmt.Printf("UpdateLedger: InsertRow into " + tableName + " Table failed. Row with given key " + keys[0] + " already exists")
+			return fmt.Errorf("UpdateLedger: InsertRow into " + tableName + " Table failed. Row with given key " + keys[0] + " already exists")
+		}
 	}
 
 	fmt.Println("UpdateLedger: InsertRow into ", tableName, " Table operation Successful. ")
@@ -2047,7 +2035,7 @@ func UpdateLedger(stub shim.ChaincodeStubInterface, tableName string, keys []str
 // Open a User Registration Table if one does not exist
 // Register users into this table
 ////////////////////////////////////////////////////////////////////////////
-func DeleteFromLedger(stub shim.ChaincodeStubInterface, tableName string, keys []string) error {
+func DeleteFromLedger(stub *shim.ChaincodeStub, tableName string, keys []string) error {
 	var columns []shim.Column
 
 	//nKeys := GetNumberOfKeys(tableName)
@@ -2075,7 +2063,7 @@ func DeleteFromLedger(stub shim.ChaincodeStubInterface, tableName string, keys [
 // Replaces the Entry in the Ledger
 //
 ////////////////////////////////////////////////////////////////////////////
-func ReplaceLedgerEntry(stub shim.ChaincodeStubInterface, tableName string, keys []string, args []byte) error {
+func ReplaceLedgerEntry(stub *shim.ChaincodeStub, tableName string, keys []string, args []byte) error {
 
 	nKeys := GetNumberOfKeys(tableName)
 	if nKeys < 1 {
@@ -2108,7 +2096,7 @@ func ReplaceLedgerEntry(stub shim.ChaincodeStubInterface, tableName string, keys
 ////////////////////////////////////////////////////////////////////////////
 // Query a User Object by Table Name and Key
 ////////////////////////////////////////////////////////////////////////////
-func QueryLedger(stub shim.ChaincodeStubInterface, tableName string, args []string) ([]byte, error) {
+func QueryLedger(stub *shim.ChaincodeStub, tableName string, args []string) ([]byte, error) {
 
 	var columns []shim.Column
 	nCol := GetNumberOfKeys(tableName)
@@ -2149,7 +2137,7 @@ func QueryLedger(stub shim.ChaincodeStubInterface, tableName string, args []stri
 // ./peer chaincode query -l golang -n mycc -c '{"Function": "GetLastBid", "Args": ["1111"]}'
 // ./peer chaincode query -l golang -n mycc -c '{"Function": "GetHighestBid", "Args": ["1111"]}'
 /////////////////////////////////////////////////////////////////////////////////////////////////////
-func GetListOfBids(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func GetListOfBids(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	rows, err := GetList(stub, "BidTable", args)
 	if err != nil {
@@ -2182,7 +2170,7 @@ func GetListOfBids(stub shim.ChaincodeStubInterface, function string, args []str
 // This is a fixed Query to be issued as below
 // ./peer chaincode query -l golang -n mycc -c '{"Function": "GetListOfInitAucs", "Args": ["2016"]}'
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-func GetListOfInitAucs(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func GetListOfInitAucs(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	rows, err := GetList(stub, "AucInitTable", args)
 	if err != nil {
@@ -2215,7 +2203,7 @@ func GetListOfInitAucs(stub shim.ChaincodeStubInterface, function string, args [
 // This is a fixed Query to be issued as below
 // ./peer chaincode query -l golang -n mycc -c '{"Function": "GetListOfOpenAucs", "Args": ["2016"]}'
 ////////////////////////////////////////////////////////////////////////////
-func GetListOfOpenAucs(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func GetListOfOpenAucs(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	rows, err := GetList(stub, "AucOpenTable", args)
 	if err != nil {
@@ -2247,7 +2235,7 @@ func GetListOfOpenAucs(stub shim.ChaincodeStubInterface, function string, args [
 // in the block-chain .. Pass the Item ID
 // ./peer chaincode query -l golang -n mycc -c '{"Function": "GetItemLog", "Args": ["1000"]}'
 ////////////////////////////////////////////////////////////////////////////
-func GetItemLog(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func GetItemLog(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	// Check there are 1 Arguments provided as per the the struct - two are computed
 	// See example
@@ -2289,7 +2277,7 @@ func GetItemLog(stub shim.ChaincodeStubInterface, function string, args []string
 // See Sample data
 // ./peer chaincode query -l golang -n mycc -c '{"Function": "GetItemListByCat", "Args": ["2016", "Modern"]}'
 ////////////////////////////////////////////////////////////////////////////
-func GetItemListByCat(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func GetItemListByCat(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	// Check there are 1 Arguments provided as per the the struct - two are computed
 	// See example
@@ -2330,14 +2318,14 @@ func GetItemListByCat(stub shim.ChaincodeStubInterface, function string, args []
 // Get a List of Users by Category
 // in the block-chain
 ////////////////////////////////////////////////////////////////////////////
-func GetUserListByCat(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func GetUserListByCat(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	// Check there are 1 Arguments provided as per the the struct - two are computed
 	// See example
 	if len(args) < 1 {
 		fmt.Println("GetUserListByCat(): Incorrect number of arguments. Expecting 1 ")
 		fmt.Println("GetUserListByCat(): ./peer chaincode query -l golang -n mycc -c '{\"Function\": \"GetUserListByCat\", \"Args\": [\"AH\"]}'")
-		return nil, errors.New("CreateUserObject(): Incorrect number of arguments. Expecting 1 ")
+		return nil, errors.New("GetUserListByCat(): Incorrect number of arguments. Expecting 1 ")
 	}
 
 	rows, err := GetList(stub, "UserCatTable", args)
@@ -2369,7 +2357,7 @@ func GetUserListByCat(stub shim.ChaincodeStubInterface, function string, args []
 // Get a List of Rows based on query criteria from the OBC
 //
 ////////////////////////////////////////////////////////////////////////////
-func GetList(stub shim.ChaincodeStubInterface, tableName string, args []string) ([]shim.Row, error) {
+func GetList(stub *shim.ChaincodeStub, tableName string, args []string) ([]shim.Row, error) {
 	var columns []shim.Column
 
 	nKeys := GetNumberOfKeys(tableName)
@@ -2414,7 +2402,7 @@ func GetList(stub shim.ChaincodeStubInterface, tableName string, args []string) 
 // Get The Highest Bid Received so far for an Auction
 // in the block-chain
 ////////////////////////////////////////////////////////////////////////////
-func GetLastBid(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func GetLastBid(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	tn := "BidTable"
 	rows, err := GetList(stub, tn, args)
@@ -2453,7 +2441,7 @@ func GetLastBid(stub shim.ChaincodeStubInterface, function string, args []string
 // Get The Highest Bid Received so far for an Auction
 // in the block-chain
 ////////////////////////////////////////////////////////////////////////////
-func GetNoOfBidsReceived(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func GetNoOfBidsReceived(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	tn := "BidTable"
 	rows, err := GetList(stub, tn, args)
@@ -2468,7 +2456,7 @@ func GetNoOfBidsReceived(stub shim.ChaincodeStubInterface, function string, args
 // Get the Highest Bid in the List
 //
 ////////////////////////////////////////////////////////////////////////////
-func GetHighestBid(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func GetHighestBid(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	tn := "BidTable"
 	rows, err := GetList(stub, tn, args)
@@ -2559,7 +2547,7 @@ func CheckRequestType(rt string) bool {
 // var recType = []string{"ARTINV", "USER", "BID", "AUCREQ", "POSTTRAN", "OPENAUC", "CLAUC"}
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-func ProcessQueryResult(stub shim.ChaincodeStubInterface, Avalbytes []byte, args []string) error {
+func ProcessQueryResult(stub *shim.ChaincodeStub, Avalbytes []byte, args []string) error {
 
 	// Identify Record Type by scanning the args for one of the recTypes
 	// This is kind of a post-processor once the query fetches the results
@@ -2649,7 +2637,7 @@ func ProcessQueryResult(stub shim.ChaincodeStubInterface, Avalbytes []byte, args
 // ./peer chaincode invoke -l golang -n mycc -c '{"Function": "OpenAuctionForBids", "Args":["1111", "OPENAUC", "3"]}'
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func OpenAuctionForBids(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func OpenAuctionForBids(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	// Fetch Auction Object and check its Status
 	Avalbytes, err := QueryLedger(stub, "AuctionTable", args)
@@ -2780,7 +2768,7 @@ func exe_cmd(cmd string) error {
 // 3. If now is > expiry time call CloseAuction
 //////////////////////////////////////////////////////////////////////////
 
-func CloseOpenAuctions(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func CloseOpenAuctions(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	rows, err := GetListOfOpenAucs(stub, "AucOpenTable", []string{"2016"})
 	if err != nil {
@@ -2835,7 +2823,7 @@ func CloseOpenAuctions(stub shim.ChaincodeStubInterface, function string, args [
 //
 //////////////////////////////////////////////////////////////////////////
 
-func CloseAuction(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func CloseAuction(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	// Close The Auction -  Fetch Auction Object
 	Avalbytes, err := QueryLedger(stub, "AuctionTable", []string{args[0], "AUCREQ"})
@@ -2908,7 +2896,7 @@ func CloseAuction(stub shim.ChaincodeStubInterface, function string, args []stri
 // at the UI level and this chain-code assumes application has validated that
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-func BuyItNow(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func BuyItNow(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 
 	// Process Final Bid - Turn it into a Transaction
 	Avalbytes, err := GetHighestBid(stub, "GetHighestBid", []string{args[0]})
@@ -3015,7 +3003,7 @@ func BuyItNow(stub shim.ChaincodeStubInterface, function string, args []string) 
 // from INIT to OPEN to CLOSED
 //////////////////////////////////////////////////////////////////////////
 
-func UpdateAuctionStatus(stub shim.ChaincodeStubInterface, tableName string, ar AuctionRequest) ([]byte, error) {
+func UpdateAuctionStatus(stub *shim.ChaincodeStub, tableName string, ar AuctionRequest) ([]byte, error) {
 
 	buff, err := AucReqtoJSON(ar)
 	if err != nil {
